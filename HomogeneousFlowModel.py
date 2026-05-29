@@ -2,7 +2,7 @@ import numpy as np
 from barril.units import Scalar
 
 
-def Calculate_homogeneousFlow_properties(
+def Calculate_HomogeneousFlowProperties(
     Bg,
     Rs,
     Rsw,

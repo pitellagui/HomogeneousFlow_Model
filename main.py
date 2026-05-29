@@ -1,19 +1,36 @@
-from Black_Oil.Water_Properties import Calculate_water_properties
-from Black_Oil.Gas_Properties import Calculate_gas_properties
-from Black_Oil.Oil_Properties import Calculate_oil_properties
-from Homogeneous_Flow_Model import Calculate_homogeneousFlow_properties, Calculate_dpdl_t
+from BlackOilModel import GasPhase, OilPhase, WaterPhase
+import unitsconverter
+from HomogeneousFlowModel import Calculate_HomogeneousFlowProperties, Calculate_dpdl_t
 from barril.units import Scalar
 
+# Dados iniciais
+densidaderelativagas = 0.84
+densidaderelativaoleo = 0.86
+Pressaodebolha = 5000 # psia
+pressaolinha = 3626 # psia
+temperaturalinha = 122 # °F
 
-P = Scalar("pressure", 1200, "psia")
-T = Scalar("temperature", 100, "degF")
-Pb = Scalar("pressure", 2792, "psia")
-dg = Scalar("dimensionless", 0.72, "unitless")
-do = Scalar("dimensionless", 0.81, "unitless")
-S = 0.01
-rho_g_input = None
-rho_o_input = None
-Rs_input = None
+gas = GasPhase(zcorrelation="Papay", μcorrelation='Lee', dg=densidaderelativagas, P=pressaolinha, T=unitsconverter.Temperature(temperaturalinha, 'F','R'))
+oil = OilPhase("Standing", "Standing", "Beggs",densidaderelativaoleo, densidaderelativagas, pressaolinha, Pressaodebolha, temperaturalinha)
+gas.output()
+oil.output()
+
+Bg = Scalar(gas.Bg(), "m3/sm3")
+rho_G = Scalar(gas.ρ, "lbm/ft3")
+mu_G = Scalar(gas.μ, "cP")
+Mg = Scalar(gas.Mg, "lb/lbmol")
+Rs = Scalar(oil.Rs, "sm3/sm3")
+Bo = Scalar(oil.Bo, "bbl/stb")
+rho_o = Scalar(oil.ρo, "lbm/ft3")
+mu_o = Scalar(oil.μob, "cP")
+
+P = Scalar(pressaolinha, "psia")
+T = Scalar(temperaturalinha, "degF")
+dg = Scalar(densidaderelativagas, "unitless") 
+do = Scalar(densidaderelativaoleo, "unitless")
+
+rho_w, Rsw, Cw, Bw, mi_w1, mi_w, mi_w_ratio = WaterPhase(P, T, 0)
+
 D_h = Scalar("length", 0.05, "m")
 epsilon = Scalar("length", 0.000045, "m")
 theta = Scalar("plane angle", 0, "rad")
@@ -21,109 +38,13 @@ Vo_sc = Scalar("volume flow rate", 0.01, "m3/s")
 Vw_sc = Scalar("volume flow rate", 0.0, "m3/s")
 Vg_sc = Scalar("volume flow rate", 1.0, "m3/s")
 
-Mg, dg, P_pc, T_pc, P_pr, T_pr, rho_g, Z, Cg, Bg, Eg, mu_g = Calculate_gas_properties(P, T, dg, rho_g_input)
+homogeneous_output = Calculate_HomogeneousFlowProperties(Bg, Rs, Rsw, Vo_sc, Bo, Vw_sc, Bw, rho_o, rho_w, mu_o, mi_w, Vg_sc, rho_G, mu_G, D_h, epsilon)
+Bsw, GOR, Q_G_calc, Q_L, Q_G, Q_total, A_p, v_m, lambda_L, lambda_G, rho_L, rho_m, mu_L, mu_m, m_dot_L, m_dot_G, m_dot_m, x, Re_m, f_TP = homogeneous_output["Bsw"], homogeneous_output["GOR"], homogeneous_output["Q_G_calc"], homogeneous_output["Q_L"], homogeneous_output["Q_G"], homogeneous_output["Q_total"], homogeneous_output["A_p"], homogeneous_output["v_m"], homogeneous_output["lambda_L"], homogeneous_output["lambda_G"], homogeneous_output["rho_L"], homogeneous_output["rho_m"], homogeneous_output["mu_L"], homogeneous_output["mu_m"], homogeneous_output["m_dot_L"], homogeneous_output["m_dot_G"], homogeneous_output["m_dot_m"], homogeneous_output["x"], homogeneous_output["Re_m"], homogeneous_output["f_TP"]
 
-do, API, Pb, Rs, Co, Bo, Bt, rho_o, mu_od, mu_ob, mu_o = Calculate_oil_properties(P, T, do, rho_o_input, Pb, Rs_input, dg, Bg)
-
-rho_w, Rsw, Cw, Bw, mu_w1, mu_w, mu_w_ratio = Calculate_water_properties(P, T, S)
-
-flow_properties = Calculate_homogeneousFlow_properties(
-    Bg,
-    Rs,
-    Rsw,
-    Vo_sc,
-    Bo,
-    Vw_sc,
-    Bw,
-    rho_o,
-    rho_w,
-    mu_o,
-    mu_w,
-    Vg_sc,
-    rho_g,
-    mu_g,
-    D_h,
-    epsilon
-)
-
-dpdl_results = Calculate_dpdl_t(
-    flow_properties["rho_m"],
-    flow_properties["f_TP"],
-    flow_properties["m_dot_m"],
-    flow_properties["x"],
-    flow_properties["v_m"],
-    D_h,
-    theta,
-    flow_properties["A_p"],
-    Mg,
-    T,
-    rho_g
-)
-
-print("=== GAS ===")
-print("Mg =", Mg)
-print("dg =", dg)
-print("P_pc =", P_pc)
-print("T_pc =", T_pc)
-print("P_pr =", P_pr)
-print("T_pr =", T_pr)
-print("rho_g =", rho_g)
-print("Z =", Z)
-print("Cg =", Cg)
-print("Bg =", Bg)
-print("Eg =", Eg)
-print("mi_g =", mu_g)
-
-
-print("\n=== WATER ===")
-print("rho_w =", rho_w)
-print("Rsw =", Rsw)
-print("Cw =", Cw)
-print("Bw =", Bw)
-print("mi_w1 =", mu_w1)
-print("mi_w =", mu_w)
-print("mi_w_ratio =", mu_w_ratio)
-
-
-print("\n=== OIL ===")
-print("do =", do)
-print("API =", API)
-print("Pb =", Pb)
-print("Rs =", Rs)
-print("Co =", Co)
-print("Bo =", Bo)
-print("Bt =", Bt)
-print("rho_o =", rho_o)
-print("mi_od =", mu_od)
-print("mi_ob =", mu_ob)
-print("mi_o =", mu_o)
-
-
-print("\n=== HOMOGENEOUS FLOW ===")
-print("GOR =", flow_properties["GOR"])
-print("Q_G_calc =", flow_properties["Q_G_calc"])
-print("Q_L =", flow_properties["Q_L"])
-print("Q_G =", flow_properties["Q_G"])
-print("Q_total =", flow_properties["Q_total"])
-print("A_p =", flow_properties["A_p"])
-print("v_m =", flow_properties["v_m"])
-print("lambda_L =", flow_properties["lambda_L"])
-print("lambda_G =", flow_properties["lambda_G"])
-print("rho_L =", flow_properties["rho_L"])
-print("rho_m =", flow_properties["rho_m"])
-print("mu_L =", flow_properties["mu_L"])
-print("mu_m =", flow_properties["mu_m"])
-print("m_dot_L =", flow_properties["m_dot_L"])
-print("m_dot_G =", flow_properties["m_dot_G"])
-print("m_dot_m =", flow_properties["m_dot_m"])
-print("x =", flow_properties["x"])
-print("Re_m =", flow_properties["Re_m"])
-print("f_TP =", flow_properties["f_TP"])
-
-
-print("\n=== PRESSURE GRADIENT ===")
-print("dpdl_friccao =", dpdl_results["dpdl_friccao"])
-print("dpdl_gravidade =", dpdl_results["dpdl_gravidade"])
-print("valor_aceleracao =", dpdl_results["valor_aceleracao"])
-print("dpdl_aceleracao =", dpdl_results["dpdl_aceleracao"])
-print("dpdl_total =", dpdl_results["dpdl_total"])
+dpdl_output = Calculate_dpdl_t(rho_m, f_TP, m_dot_m, x, v_m, D_h, theta, A_p, Mg, T, rho_G)
+dpdl_friccao, dpdl_gravidade, valor_aceleracao, dpdl_aceleracao, dpdl_total = dpdl_output["dpdl_friccao"], dpdl_output["dpdl_gravidade"], dpdl_output["valor_aceleracao"], dpdl_output["dpdl_aceleracao"], dpdl_output["dpdl_total"]
+print(f"Perda de carga por fricção: {dpdl_friccao.GetValue('Pa/m'):.2f} Pa/m"
+      f"\nPerda de carga por gravidade: {dpdl_gravidade.GetValue('Pa/m'):.2f} Pa/m"
+      f"\nValor da aceleração: {valor_aceleracao.GetValue()}"
+      f"\nPerda de carga por aceleração: {dpdl_aceleracao.GetValue('Pa/m'):.2f} Pa/m"
+      f"\nPerda de carga total: {dpdl_total.GetValue('Pa/m'):.2f} Pa/m")
